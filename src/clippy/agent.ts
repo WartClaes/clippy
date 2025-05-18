@@ -1,7 +1,8 @@
+import type { AgentData } from './types'
+
 import Queue from './queue';
 import Animator, { type AnimationState } from './animator';
 import Balloon from './balloon'
-import type { AgentData } from './types'
 
 export default class Agent {
   private _queue: Queue;
@@ -12,6 +13,11 @@ export default class Agent {
   private _targetY?: number;
   private _targetX?: number;
   private _idleDfd?: Promise<void>;
+  private _offset = { top: 0, left: 0 };
+  private _dragUpdateLoop?: number;
+
+  private _moveHandle?: (e: MouseEvent) => void;
+  private _upHandle?: () => void;
 
   constructor (path: string, data: AgentData, sounds?: any) {
     this._queue = new Queue(this._onQueueEmpty.bind(this));
@@ -25,7 +31,7 @@ export default class Agent {
 
     this._balloon = new Balloon(this._el);
 
-    // this._setupEvents();
+    this._setupEvents();
   }
 
   gestureAt (x: number, y: number) {
@@ -272,14 +278,15 @@ export default class Agent {
 
   /**************************** Queue and Idle handling ************************************/
 
-    /***
-    * Handle empty queue.
-    * We need to transition the animation to an idle state
-  * @private
-  */
+  /***
+   * Handle empty queue.
+   * We need to transition the animation to an idle state
+   */
   private _onQueueEmpty(): void {
     if (this._hidden || this._isIdleAnimation()) return;
-    let idleAnim = this._getIdleAnimation();
+
+    const idleAnim = this._getIdleAnimation();
+
     this._idleDfd = new Promise((resolve) => {
       this._animator.showAnimation(idleAnim, (_name: string, state: AnimationState) => {
         if (state === 'exited') {
@@ -287,8 +294,6 @@ export default class Agent {
         }
       });
     });
-
-    this._animator.showAnimation(idleAnim, () => this._onIdleComplete);
   }
 
   private _isIdleAnimation() {
@@ -316,13 +321,11 @@ export default class Agent {
 
   /**************************** Events ************************************/
 
-  /*
-  _setupEvents () {
-    $(window).on('resize', $.proxy(this.reposition, this));
+  private _setupEvents () {
+    window.addEventListener('resize', () => this.reposition());
 
-    this._el.on('mousedown', $.proxy(this._onMouseDown, this));
-
-    this._el.on('dblclick', $.proxy(this._onDoubleClick, this));
+    this._el.addEventListener('mousedown', (e) => this._onMouseDown(e));
+    this._el.addEventListener('dblclick', () => this._onDoubleClick());
   }
 
   private _onDoubleClick () {
@@ -332,7 +335,8 @@ export default class Agent {
   }
 
   reposition() {
-    if (!this._el.is(':visible')) return;
+    // TODO: add this
+    // if (!this._el.is(':visible')) return;
     const ot = this._el.offsetTop;
     const ol = this._el.offsetLeft;
 
@@ -367,68 +371,74 @@ export default class Agent {
     this._balloon.reposition();
   }
 
-  private _onMouseDown (e: Event) {
+  private _onMouseDown (e: MouseEvent) {
     e.preventDefault();
 
     this._startDrag(e);
   }
-  */
 
 
   /**************************** Drag ************************************/
 
-  /*
-  private _startDrag (e) {
+  private _startDrag (e: MouseEvent) {
     // pause animations
     this.pause();
+
     this._balloon.hide(true);
+
     this._offset = this._calculateClickOffset(e);
 
-    this._moveHandle = $.proxy(this._dragMove, this);
-    this._upHandle = $.proxy(this._finishDrag, this);
+    this._moveHandle = (e: MouseEvent) => this._dragMove(e);
+    this._upHandle = () => this._finishDrag();
 
-    $(window).on('mousemove', this._moveHandle);
-    $(window).on('mouseup', this._upHandle);
+    window.addEventListener('mousemove', this._moveHandle);
+    window.addEventListener('mouseup', this._upHandle);
 
-    this._dragUpdateLoop = window.setTimeout($.proxy(this._updateLocation, this), 10);
+    this._dragUpdateLoop = window.setTimeout(() => this._updateLocation(), 10);
   }
 
-  private _calculateClickOffset (e) {
-    let mouseX = e.pageX;
-    let mouseY = e.pageY;
-    let o = this._el.offset();
-    return {
-      top: mouseY - o.top,
-      left: mouseX - o.left
-    }
+  private _calculateClickOffset (e: MouseEvent) {
+    const mouseX = e.pageX;
+    const mouseY = e.pageY;
+    const ol = this._el.offsetLeft;
+    const ot = this._el.offsetTop;
 
+    return {
+      top: mouseY - ot,
+      left: mouseX - ol,
+    }
   }
 
   private _updateLocation () {
-    this._el.css({ top: this._targetY, left: this._targetX });
-    this._dragUpdateLoop = window.setTimeout($.proxy(this._updateLocation, this), 10);
+    this._el.style.setProperty('top', `${this._targetY}`);
+    this._el.style.setProperty('left', `${this._targetX}`);
+
+    this._dragUpdateLoop = window.setTimeout(() => this._updateLocation(), 10);
   }
 
-  private _dragMove (e) {
+  private _dragMove (e: MouseEvent) {
     e.preventDefault();
-    let x = e.clientX - this._offset.left;
-    let y = e.clientY - this._offset.top;
+
+    const x = e.clientX - this._offset.left;
+    const y = e.clientY - this._offset.top;
+
     this._targetX = x;
     this._targetY = y;
   }
 
   private _finishDrag () {
     window.clearTimeout(this._dragUpdateLoop);
+
     // remove handles
-    $(window).off('mousemove', this._moveHandle);
-    $(window).off('mouseup', this._upHandle);
+    this._moveHandle && window.addEventListener('mousemove', this._moveHandle);
+    this._upHandle && window.addEventListener('mouseup', this._upHandle);
+
     // resume animations
     this._balloon.show();
     this.reposition();
     this.resume();
 
   }
-  */
 
   private _addToQueue (func: (complete: () => void) => void) {
     this._queue.queue(func);
