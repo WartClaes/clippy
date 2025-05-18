@@ -1,5 +1,4 @@
 import type { AgentData } from './types'
-
 import Queue from './queue';
 import Animator, { type AnimationState } from './animator';
 import Balloon from './balloon'
@@ -69,51 +68,51 @@ export default class Agent {
   }
 
 
-  moveTo (x: number, y: number, duration: number) {
-    let dir = this._getDirection(x, y);
-    let anim = 'Move' + dir;
-
-    if (duration === undefined) duration = 1000;
-
-    this._addToQueue((complete: () => void) => {
-      // the simple case
-      if (duration === 0) {
-        this._el.style.setProperty('top', `${y}px`);
-        this._el.style.setProperty('left', `${x}px`);
-
-        this.reposition();
-
-        complete();
-
-        return;
-      }
-
-      // no animations
-      if (!this.hasAnimation(anim)) {
-        this._el.animate({ top: y, left: x }, duration, complete);
-        return;
-      }
-
-      let callback = (name: string, state: AnimationState) => {
-        // when exited, complete
-        if (state === 'exited') {
-          complete();
-          return;
-        }
-
-        // if waiting,
-        if (state === 'waiting') {
-          // this._el.animate({ top: y, left: x }, duration, () => {
-          //   // after we're done with the movement, do the exit animation
-          //   this._animator.exitAnimation();
-          // });
-        }
-
-      };
-
-      this._playInternal(anim, callback);
-    });
-  }
+  // moveTo (x: number, y: number, duration: number) {
+  //   let dir = this._getDirection(x, y);
+  //   let anim = 'Move' + dir;
+  //
+  //   if (duration === undefined) duration = 1000;
+  //
+  //   this._addToQueue((complete: () => void) => {
+  //     // the simple case
+  //     if (duration === 0) {
+  //       this._el.style.setProperty('top', `${y}px`);
+  //       this._el.style.setProperty('left', `${x}px`);
+  //
+  //       this.reposition();
+  //
+  //       complete();
+  //
+  //       return;
+  //     }
+  //
+  //     // no animations
+  //     if (!this.hasAnimation(anim)) {
+  //       // this._el.animate({ top: y, left: x }, duration, complete);
+  //       return;
+  //     }
+  //
+  //     let callback = (name: string, state: AnimationState) => {
+  //       // when exited, complete
+  //       if (state === 'exited') {
+  //         complete();
+  //         return;
+  //       }
+  //
+  //       // if waiting,
+  //       if (state === 'waiting') {
+  //         // this._el.animate({ top: y, left: x }, duration, () => {
+  //         //   // after we're done with the movement, do the exit animation
+  //         //   this._animator.exitAnimation();
+  //         // });
+  //       }
+  //
+  //     };
+  //
+  //     this._playInternal(anim, callback);
+  //   });
+  // }
 
   _playInternal(animation: string, callback: (name: string, state: AnimationState) => void) {
     // if we're inside an idle animation,
@@ -161,8 +160,6 @@ export default class Agent {
   }
 
   show(fast = false) {
-    console.log('show', fast);
-
     this._hidden = false;
 
     if (fast) {
@@ -174,9 +171,10 @@ export default class Agent {
       return;
     }
 
-    const cs = this._el.computedStyleMap();
-    const elTop = cs.get('top');
-    const elLeft = cs.get('left');
+    const cs = window.getComputedStyle(this._el);
+
+    const elTop = cs.top;
+    const elLeft = cs.left;
 
     if (elTop === 'auto' || elLeft !== 'auto') {
       const left = window.innerWidth * 0.8;

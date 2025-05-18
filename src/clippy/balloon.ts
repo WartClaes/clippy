@@ -22,7 +22,90 @@ export default class Balloon {
     this._setup();
   }
 
-  _setup () {
+  speak(complete: () => void, text: string, hold: boolean) {
+    if (!this._content) return;
+
+    this._hidden = false;
+
+    this.show();
+
+    let c = this._content;
+
+    // set height to auto
+    c.style.setProperty('height', 'auto');
+    c.style.setProperty('width', 'auto');
+
+    // add the text
+    c.innerText = text;
+
+    // set height
+    c.style.setProperty('height', `${c.clientHeight}px`);
+    c.style.setProperty('width', `${c.clientWidth}px`);
+
+    c.innerText = '';
+
+    this.reposition();
+
+    this._complete = complete;
+    this._sayWords(text, hold, complete);
+  }
+
+  show() {
+    if (this._hidden || !this._balloon) return;
+
+    this._balloon.style.setProperty('display', 'block');
+  }
+
+  hide(fast = false) {
+    if (fast) {
+      this._balloon?.style.setProperty('display', 'block');
+      return;
+    }
+
+    this._hiding = window.setTimeout(() => this._finishHideBalloon(), this._CLOSE_BALLOON_DELAY);
+  }
+
+  reposition() {
+    let sides: Side[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+
+    for (let i = 0; i < sides.length; i++) {
+      let s = sides[i];
+
+      this._position(s);
+
+      if (!this._isOut()) break;
+    }
+  }
+
+  close () {
+    if (this._active) {
+      this._hold = false;
+    } else if (this._hold) {
+      this._complete?.();
+    }
+  }
+
+  pause() {
+    window.clearTimeout(this._loop);
+
+    if (this._hiding) {
+      window.clearTimeout(this._hiding);
+      this._hiding = null;
+    }
+  }
+
+  resume() {
+    if (this._addWord) {
+      this._addWord();
+      return;
+    }
+
+    if (!this._hold && !this._hidden) {
+      this._hiding = window.setTimeout(() => this._finishHideBalloon(), this._CLOSE_BALLOON_DELAY);
+    }
+  }
+
+  private _setup() {
     const balloon = document.createElement('div');
     balloon.classList.add('clippy-balloon');
 
@@ -37,24 +120,7 @@ export default class Balloon {
     document.body.appendChild(balloon);
   }
 
-  reposition () {
-    let sides: Side[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-
-    for (let i = 0; i < sides.length; i++) {
-      let s = sides[i];
-
-      this._position(s);
-
-      if (!this._isOut()) break;
-    }
-  }
-
-  /***
-    *
-    * @param side
-  * @private
-  */
-  _position (side: Side) {
+  private _position (side: Side) {
     if (!this._balloon) return;
 
     let ol = this._targetEl.offsetLeft;
@@ -131,50 +197,7 @@ export default class Balloon {
     return (top + bH + m) > wH || (left + bW + m) > wW;
   }
 
-  speak(complete: () => void, text: string, hold: boolean) {
-    if (!this._content) return;
-
-    this._hidden = false;
-
-    this.show();
-
-    let c = this._content;
-
-    // set height to auto
-    c.style.setProperty('height', 'auto');
-    c.style.setProperty('width', 'auto');
-
-    // add the text
-    c.innerText = text;
-
-    // set height
-    c.style.setProperty('height', `${c.clientHeight}px`);
-    c.style.setProperty('width', `${c.clientWidth}px`);
-
-    c.innerText = '';
-
-    this.reposition();
-
-    this._complete = complete;
-    this._sayWords(text, hold, complete);
-  }
-
-  show() {
-    if (this._hidden || !this._balloon) return;
-
-    this._balloon.style.setProperty('display', 'block');
-  }
-
-  hide(fast = false) {
-    if (fast) {
-      this._balloon?.style.setProperty('display', 'block');
-      return;
-    }
-
-    this._hiding = window.setTimeout(() => this._finishHideBalloon(), this._CLOSE_BALLOON_DELAY);
-  }
-
-  _finishHideBalloon() {
+  private _finishHideBalloon() {
     if (this._active) return;
 
     this._balloon?.style.setProperty('display', 'none');
@@ -214,34 +237,5 @@ export default class Balloon {
     };
 
     this._addWord();
-
-  }
-
-  close () {
-    if (this._active) {
-      this._hold = false;
-    } else if (this._hold) {
-      this._complete?.();
-    }
-  }
-
-  pause() {
-    window.clearTimeout(this._loop);
-
-    if (this._hiding) {
-      window.clearTimeout(this._hiding);
-      this._hiding = null;
-    }
-  }
-
-  resume() {
-    if (this._addWord) {
-      this._addWord();
-      return;
-    }
-
-    if (!this._hold && !this._hidden) {
-      this._hiding = window.setTimeout(() => this._finishHideBalloon(), this._CLOSE_BALLOON_DELAY);
-    }
   }
 }
